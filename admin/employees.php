@@ -246,7 +246,7 @@ if (isset($_SESSION['username_barbershop_Xw211qAAsq4']) && isset($_SESSION['pass
                             <!-- SUCCESS MESSAGE -->
 
                             <script type="text/javascript">
-                                swal("Nuevo Empleado", "El/La nuev@ emplead@ se ha insertado con éxito.", "success").then((value) => {
+                                swal("Nuevo Empleado", "El/La nuevo (a) empleado (a) se ha insertado con éxito.", "success").then((value) => {
                                     window.location.replace("employees.php");
                                 });
                             </script>

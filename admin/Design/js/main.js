@@ -1,5 +1,3 @@
-
-
 /* ============ TITLE TOOLTIP TOOGLE ============== */
 	
 $(function () 
@@ -96,7 +94,7 @@ $('.cancel_appointment_button').click(function()
             $('#cancel_appointment_'+appointment_id).modal('hide');
             
             //Show Success Message
-            swal("Cancel Appointment","The Appointment has been canceled successfully!", "success").then((value) => 
+            swal("Cancelar Cita","La cita ha sido cancelada satisfactoriamente!", "success").then((value) => 
             {
                 window.location.replace("index.php");
             });
