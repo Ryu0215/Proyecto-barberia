@@ -149,18 +149,9 @@ include "Includes/templates/navbar.php";
                     <div class="book_content">
                         <h2 style="color: white;">Reserva tu Cita</h2>
                         <p style="color: #999;">
-                            En unos sencillos pasos, solo elige la fecha <br>y podrás reservar tu cita sin problemas.
+                            En unos sencillos pasos, solo elige el/los servicio(s) que deseas <br> el barbero y la fecha y podrás reservar tu cita sin problemas.
                         </p>
-                    </div>
-                    <div class="form-group row">
-                        <div class="col-md-6 padding-10">
-                            <input type="date" class="form-control">
-                        </div>
-                        <div class="col-md-6 padding-10">
-                            <input type="time" class="form-control">
-                        </div>
-                    </div>
-
+                    
                     <!-- SECCIÓN DE AGENDAR -->
 
                     <button id="app_submit" class="default_btn" type="submit">
@@ -306,7 +297,7 @@ include "Includes/templates/navbar.php";
                                     <li>
                                         <h4><?php echo $service['service_name'] ?></h4>
                                         <p><?php echo $service['service_description'] ?></p>
-                                        <span class="price">$<?php echo $service['service_price'] ?></span>
+                                        <span class="price">$ <?php echo number_format($service['service_price'], 0, ',', '.'); ?></span>
                                     </li>
 
                                 <?php

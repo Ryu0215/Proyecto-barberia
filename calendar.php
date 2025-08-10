@@ -2,12 +2,12 @@
     
     //PHP INCLUDES
 
-	include "connect.php";
+    include "connect.php";
 
-	if(isset($_POST['selected_employee']) && isset($_POST['selected_services']))
-	{
+    if(isset($_POST['selected_employee']) && isset($_POST['selected_services']))
+    {
 
-		?>
+        ?>
 
         <!-- ESTILOS PARA EL CALENDARIO -->
         
@@ -103,12 +103,10 @@
 
             <div class="appointments_days">
                 <?php
-                    
-                    $appointment_date = date('Y-m-d');
-
-                    for($i = 0; $i < 10; $i++)
+                    // Bucle para mostrar los encabezados de los próximos 10 días, empezando desde mañana.
+                    for($i = 0; $i <= 10; $i++)
                     {
-                        $appointment_date = date('Y-m-d', strtotime($appointment_date . ' +1 day'));
+                        $appointment_date = date('Y-m-d', strtotime(date('Y-m-d') . " +".$i." day"));
                         echo "<div class = 'appointment_day'>";
                             echo date('D', strtotime($appointment_date));
                             echo "<br>";
@@ -124,117 +122,92 @@
                 <?php
 
                     //SERVICIOS SELECCIONADOS
-		            $desired_services = $_POST['selected_services'];
-		            
+                    $desired_services = $_POST['selected_services'];
+                    
                     //EMPLEADO SELECCIONADO
-		            $selected_employee = $_POST['selected_employee'];
+                    $selected_employee = $_POST['selected_employee'];
 
-            		//Duración de los servicios - Hora prevista de finalización
-		            $sum_duration = 0;
-		            
+                    //Duración de los servicios
+                    $sum_duration = 0;
+                    
                     foreach($desired_services as $service)
-		            {
-		                
-		                $stmtServices = $con->prepare("select service_duration from services where service_id = ?");
-		                $stmtServices->execute(array($service));
-		                $rowS =  $stmtServices->fetch();
-		                $sum_duration += $rowS['service_duration'];
-		                
-		            }
+                    {
+                        $stmtServices = $con->prepare("select service_duration from services where service_id = ?");
+                        $stmtServices->execute(array($service));
+                        $rowS =  $stmtServices->fetch();
+                        $sum_duration += $rowS['service_duration'];
+                    }
             
-            
-		            $sum_duration = date('H:i',mktime(0,$sum_duration));
-		            $secs = strtotime($sum_duration)-strtotime("00:00:00");
+                    // Convertir duración total a segundos
+                    $sum_duration_in_seconds = $sum_duration * 60;
 
-
-                    $open_time = date('H:i',mktime(9,0,0));
-
-                    $close_time = date('H:i',mktime(22,0,0));
-
-                    $start = $open_time;
-
-                    $secs = strtotime($sum_duration)-strtotime("00:00:00");
-                    $result = date("H:i:s",strtotime($start)+$secs);
-
-
-                    $appointment_date = date('Y-m-d');
-
-                    for($i = 0; $i < 10; $i++)
+                    // Bucle para generar las columnas de horarios, empezando desde mañana.
+                    for($i = 0; $i <= 10; $i++)
                     {
                         echo "<div class='available_booking_hours_colum'>";
 
-                            $appointment_date = date('Y-m-d', strtotime($appointment_date . ' +1 day'));
-                            $start = $open_time;
-                            $secs = strtotime($sum_duration)-strtotime("00:00:00");
-                            $result = date("H:i:s",strtotime($start)+$secs);
-
-                            $day_id = date('w',strtotime($appointment_date));
+                            $appointment_date = date('Y-m-d', strtotime(date('Y-m-d') . " +".$i." day"));
                             
-                            while($start >= $open_time && $result <= $close_time)
+                            $day_id = date('w', strtotime($appointment_date));
+                            
+                            if($day_id == 0)
                             {
-                                // Comprobar si el empleado está disponible
+                                $day_id = 7;
+                            }
 
-                                $stmt_emp = $con->prepare("
-                                    Select employee_id
-                                    from employees_schedule
-                                    where employee_id = ?
-                                    and day_id = ?
-                                    and ? between from_hour and to_hour
-                                    and ? between from_hour and to_hour
-                                       
-                                ");
-                                $stmt_emp->execute(array($selected_employee,$day_id,$start, $result));
-                                $emp = $stmt_emp->fetchAll();
+                            // Comprobar si el empleado está disponible en este día
+                            $stmt_emp_schedule = $con->prepare("
+                                SELECT from_hour, to_hour
+                                FROM employees_schedule
+                                WHERE employee_id = ? AND day_id = ?
+                            ");
+                            $stmt_emp_schedule->execute(array($selected_employee, $day_id));
+                            
+                            if($stmt_emp_schedule->rowCount() > 0)
+                            {
+                                $emp_schedule = $stmt_emp_schedule->fetch();
+                                
+                                $day_start_timestamp = strtotime($appointment_date . ' ' . $emp_schedule['from_hour']);
+                                $day_end_timestamp = strtotime($appointment_date . ' ' . $emp_schedule['to_hour']);
 
-                                //Si el empleado está disponible
-
-                                if($stmt_emp->rowCount() != 0)
+                                // Iterar a través del día de trabajo en intervalos de 30 minutos
+                                for ($current_slot_start = $day_start_timestamp; $current_slot_start < $day_end_timestamp; $current_slot_start += (30 * 60))
                                 {
+                                    $current_slot_end = $current_slot_start + $sum_duration_in_seconds;
 
-                                    //Comprobar si no hay citas que se crucen con la actual
-                                    $stmt = $con->prepare("
-                                        Select * 
-                                        from appointments a
-                                        where
-                                            date(start_time) = ?
-                                            and
-                                            a.employee_id = ?
-                                            and
-                                            canceled = 0
-                                            and
-                                            (   
-                                                time(start_time) between ? and ?
-                                                or
-                                                time(end_time_expected) between ? and ?
-                                            )
-                                    ");
-                                    
-                                    $stmt->execute(array($appointment_date,$selected_employee,$start,$result,$start,$result));
-                                    $rows = $stmt->fetchAll();
-                        
-                                    if($stmt->rowCount() != 0)
-                                    {
-                                        //Mostrar la celda en blanco
+                                    // Asegurarse de que la cita no termine después del cierre
+                                    if ($current_slot_end > $day_end_timestamp) {
+                                        break;
                                     }
-                                    else
+
+                                    $start_time_to_check = date('Y-m-d H:i:s', $current_slot_start);
+                                    $end_time_to_check = date('Y-m-d H:i:s', $current_slot_end);
+
+                                    // Comprobar si hay citas que se crucen con este intervalo
+                                    $stmt_conflict = $con->prepare("
+                                        SELECT appointment_id FROM appointments
+                                        WHERE employee_id = ? AND canceled = 0 AND
+                                        (
+                                            ? < end_time_expected AND ? > start_time
+                                        )
+                                    ");
+                                    $stmt_conflict->execute(array($selected_employee, $start_time_to_check, $end_time_to_check));
+                                    
+                                    if($stmt_conflict->rowCount() == 0)
                                     {
+                                        // Este horario está libre, lo mostramos
+                                        $start_time_formatted = date('H:i', $current_slot_start);
+                                        $end_time_formatted = date('H:i', $current_slot_end);
+                                        $radio_id = $appointment_date . "-" . str_replace(":", "", $start_time_formatted);
+                                        
+                                        // Formato de valor que appointment.php espera: "YYYY-MM-DD HH:MM HH:MM"
+                                        $radio_value = $appointment_date . " " . $start_time_formatted . " " . $end_time_formatted;
                                         ?>
-                                            <input type="radio" id="<?php echo $appointment_date." ".$start; ?>" name="desired_date_time" value="<?php echo $appointment_date." ".$start." ".$result; ?>">
-                                            <label class="available_booking_hour" for="<?php echo $appointment_date." ".$start; ?>"><?php echo $start; ?></label>
+                                            <input type="radio" id="<?php echo $radio_id; ?>" name="desired_date_time" value="<?php echo $radio_value; ?>">
+                                            <label class="available_booking_hour" for="<?php echo $radio_id; ?>"><?php echo $start_time_formatted; ?></label>
                                         <?php
                                     }
                                 }
-                                else
-                                {
-                                    //Mostrar la celda en blanco
-                                }
-                                
-
-                                $start = strtotime("+15 minutes", strtotime($start));
-                                $start =  date('H:i', $start);
-
-                                $secs = strtotime($sum_duration)-strtotime("00:00:00");
-                                $result = date("H:i",strtotime($start)+$secs);
                             }
 
                         echo "</div>";
@@ -242,8 +215,8 @@
                 ?>
             </div>
         </div>
-	<?php
-	}
+    <?php
+    }
     else
     {
         header('location: index.php');

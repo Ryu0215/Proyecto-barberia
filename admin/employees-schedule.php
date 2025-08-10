@@ -2,7 +2,7 @@
 session_start();
 
 //Título de la página
-$pageTitle = 'Horario de Emplead@s';
+$pageTitle = 'Horario de Empleados';
 
 //Includes
 include 'connect.php';
